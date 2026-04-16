@@ -10,63 +10,57 @@ Production-lean, web-first MVP for **Houston Home Help (HHH)**.
 
 ### Public pages
 - `/` (conversion homepage)
-- `/services`
-- `/how-it-works`
-- `/for-families`
-- `/for-caregivers`
-- `/team-vs-matching`
-- `/request-help`
-- `/apply-caregiver`
-- `/contact`
-- `/faq`
-- `/privacy`
-- `/terms`
+- `/services`, `/how-it-works`, `/for-families`, `/for-caregivers`, `/team-vs-matching`
+- `/request-help`, `/apply-caregiver`, `/contact`
+- `/faq`, `/privacy`, `/terms`
 
-### Dashboards (light MVP)
-- `/admin`
-- `/family`
-- `/caregiver`
+### Auth + dashboards
+- `/login`, `/signup` — Supabase email/password auth
+- `/portal` — role-aware landing page
+- `/admin` — admin-only: live requests, live caregivers, manual match workbench, status updates that email the family
+- `/family` — signed-in family: their requests + admin-posted visible updates
+- `/caregiver` — signed-in caregiver: profile + assignments
 
 ### Core flows
-1. Family request intake (company service vs registry match)
-2. Caregiver application intake
-3. Admin manual matching workflow (ZIP + mode filtered)
+1. Family request intake → writes to `family_requests`, emails admin + family
+2. Caregiver application intake → writes to `caregivers` + `caregiver_availability` + `caregiver_service_areas`, emails admin + applicant
+3. Admin manual matching → writes to `matches`, posts a `request_updates` row, updates `family_requests.status`
+4. Admin status changes → optional family-visible message stored in `request_updates` and sent by email
 
 ---
 
 ## 2) Tech stack
 
-- Next.js (App Router) + TypeScript
+- Next.js 16 (App Router) + React 19 + TypeScript
 - Tailwind CSS
-- Supabase (Postgres/Auth-ready)
+- Supabase (Auth + Postgres, RLS enabled)
+- Resend (transactional email)
 - Vercel deployment target
 
 ---
 
 ## 3) Environment variables
 
-Create `.env.local` from `.env.example`.
+Copy `.env.example` to `.env.local`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Required:
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (browser + SSR) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only, used to bypass RLS for public intake writes |
+| `RESEND_API_KEY` | Resend API key for notification emails |
+| `RESEND_FROM_EMAIL` | `Display Name <sender@domain>` — must be on a verified domain |
+| `HHH_ADMIN_EMAILS` | Comma-separated recipients for new intake / application alerts |
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase-anon-key>
-```
-
-Recommended for server actions writing securely:
-
-```bash
-SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role-key>
-```
+If `RESEND_API_KEY` is missing, emails are silently skipped (forms still work).
 
 ---
 
-## 4) Exact local run steps (copy/paste)
+## 4) Local run steps
 
 ```bash
 # 1) Install dependencies
@@ -74,20 +68,20 @@ npm install
 
 # 2) Configure environment
 cp .env.example .env.local
-# then edit .env.local with your Supabase values
+# then edit .env.local
 
-# 3) Run SQL in Supabase SQL Editor
-#    - supabase/migrations/001_init.sql
-#    - supabase/seed.sql
+# 3) Apply SQL in Supabase SQL Editor, in order:
+#    supabase/migrations/001_init.sql
+#    supabase/migrations/002_auth_rls.sql
+#    supabase/seed.sql            (optional — service types + sample data)
 
 # 4) Start dev server
 npm run dev
 
-# 5) Open app
-# http://localhost:3000
+# 5) Open http://localhost:3000
 ```
 
-Optional checks:
+Optional:
 
 ```bash
 npm run lint
@@ -97,81 +91,79 @@ npm run build
 
 ---
 
-## 5) Supabase schema overview
+## 5) First-admin bootstrap
+
+Auth signup only allows `family` or `caregiver` roles. To promote an account to admin:
+
+1. Sign up at `/signup` with the email you'll use for admin.
+2. Confirm the email (check Supabase > Authentication > Users if needed).
+3. In the Supabase SQL Editor, run:
+   ```sql
+   update public.profiles
+   set role = 'admin'
+   where email = 'you@example.com';
+   ```
+4. Sign in at `/login` and visit `/admin`.
+
+Subsequent admins can be promoted the same way until an admin-provisioning UI is built.
+
+---
+
+## 6) Supabase schema overview
 
 Tables:
-- `profiles`
-- `family_requests`
-- `caregivers`
+- `profiles` (one row per auth user, autocreated by `handle_new_user` trigger)
+- `family_requests`, `request_updates`, `admin_notes`
+- `caregivers`, `caregiver_services`, `caregiver_availability`, `caregiver_service_areas`
 - `service_types`
-- `caregiver_services`
-- `caregiver_availability`
-- `caregiver_service_areas`
 - `matches`
-- `request_updates`
-- `admin_notes`
 - `contact_submissions`
 
 SQL files:
-- `supabase/migrations/001_init.sql`
-- `supabase/seed.sql`
+- `supabase/migrations/001_init.sql` — schema
+- `supabase/migrations/002_auth_rls.sql` — RLS policies, profile bootstrap trigger, `current_user_role()` helper
+- `supabase/seed.sql` — service types, sample profiles/requests/caregivers
+
+RLS summary:
+- Families see their own requests + visible updates
+- Caregivers see their own caregiver row + matches assigned to them
+- Admins see everything and are the only role that can update status / create matches / post updates
+- Public intake inserts allowed anonymously so the marketing forms still work
 
 ---
 
-## 6) Deployment steps (Vercel)
+## 7) Deployment (Vercel)
 
-```bash
-# 1) Push repo to GitHub/GitLab/Bitbucket
-# 2) In Vercel: Add New Project -> Import repo
-# 3) Framework preset: Next.js
-# 4) Add env vars:
-#    NEXT_PUBLIC_SUPABASE_URL
-#    NEXT_PUBLIC_SUPABASE_ANON_KEY
-#    SUPABASE_SERVICE_ROLE_KEY
-# 5) Deploy
-```
+1. Push to GitHub.
+2. Vercel > Add New Project > Import this repo (framework preset: Next.js).
+3. Add env vars listed in section 3.
+4. Deploy.
 
-After deploy:
-1. Confirm routes load.
-2. Submit `/request-help`, `/apply-caregiver`, `/contact` forms.
-3. Verify inserts in Supabase tables.
-4. Validate admin dashboard/manual matching demo UI.
+Post-deploy smoke test:
+1. Submit `/request-help`, `/apply-caregiver`, `/contact` — verify Supabase rows and Resend logs.
+2. Sign up at `/signup`, promote to admin via SQL, log in at `/login`, confirm `/admin` loads live data.
+3. Create a match from the admin workbench and verify the family sees an update at `/family`.
 
 ---
 
-## 7) Production notes
+## 8) Current limitations / next tasks
 
-### Current MVP strengths
-- Clear non-medical public positioning
-- Fast lead capture and caregiver intake
-- Admin-friendly manual matching workflow
-- Houston-first copy and structure
-
-### Current limitations
-- Dashboards currently use sample arrays for read views (admin/family/caregiver listing)
-- No full role-guarded auth gating yet
-- No automated notifications (email/SMS)
-- Manual workflow is intentionally lightweight
+- Email confirmation flow relies on Supabase's default templates — swap in branded templates via the Supabase dashboard
+- No password reset page yet (use Supabase dashboard's "send magic link / reset")
+- No caregiver approval UI — flip `approved_for_company_service` / `approved_for_registry` via SQL or build a toggle in admin
+- No scheduling layer (confirmed visit dates, recurring bookings, reminders)
+- No payments (Stripe Connect for family pay + caregiver payouts)
+- SMS coordination (Twilio) not wired
 
 ---
 
-## 8) Suggested next tasks
+## 9) Legal / copy guardrails
 
-1. Replace dashboard sample reads with live Supabase queries.
-2. Add auth session + role guards for `/admin`, `/family`, `/caregiver`.
-3. Add RLS policies and strict role claims.
-4. Persist admin match actions (`matches`, `request_updates`, `admin_notes`).
-5. Add email notifications for new requests and application status updates.
-
----
-
-## 9) Legal/copy guardrails
-
-Public copy in this repo intentionally avoids medical/lPAS language.
+Public copy intentionally avoids medical / licensed-PAS language.
 
 Do not add public references to:
 - nursing
 - therapy
 - medication support
-- toileting/personal care ADL claims
+- toileting / personal care ADL claims
 - licensed PAS or medical home health terminology

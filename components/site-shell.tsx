@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { brand } from "@/lib/constants";
 import { Container } from "@/components/ui";
+import { getSession } from "@/lib/auth";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 const primaryNav = [
   ["Services", "/services"],
@@ -56,7 +58,11 @@ function Logomark() {
   );
 }
 
-export function Header() {
+export async function Header() {
+  const session = await getSession();
+  const role = session?.profile?.role;
+  const dashboardHref = role === "admin" ? "/admin" : role === "caregiver" ? "/caregiver" : role === "family" ? "/family" : "/portal";
+
   return (
     <header className="sticky top-0 z-40 border-b border-ink/5 bg-cream/85 backdrop-blur">
       <Container>
@@ -78,18 +84,32 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/apply-caregiver"
-              className="hidden rounded-full px-3 py-2 text-sm font-semibold text-ink-700 transition hover:text-hhh-700 sm:inline-flex"
-            >
-              Apply
-            </Link>
-            <Link
-              href="/request-help"
-              className="inline-flex items-center rounded-full bg-hhh-700 px-4 py-2 text-sm font-semibold text-cream shadow-soft transition hover:bg-hhh-800"
-            >
-              Get Help
-            </Link>
+            {session ? (
+              <>
+                <Link
+                  href={dashboardHref}
+                  className="hidden rounded-full px-3 py-2 text-sm font-semibold text-ink-700 transition hover:text-hhh-700 sm:inline-flex"
+                >
+                  Dashboard
+                </Link>
+                <SignOutButton />
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden rounded-full px-3 py-2 text-sm font-semibold text-ink-700 transition hover:text-hhh-700 sm:inline-flex"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/request-help"
+                  className="inline-flex items-center rounded-full bg-hhh-700 px-4 py-2 text-sm font-semibold text-cream shadow-soft transition hover:bg-hhh-800"
+                >
+                  Get Help
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </Container>

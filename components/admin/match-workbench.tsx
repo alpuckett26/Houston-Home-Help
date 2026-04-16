@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { Caregiver, FamilyRequest, RequestStatus } from "@/lib/types";
 import { requestStatuses } from "@/lib/constants";
+import {
+  createMatchAction,
+  saveAdminNoteAction,
+  updateRequestStatusAction
+} from "@/app/admin/actions";
+import { initialActionState } from "@/app/actions";
+import { FormFeedback } from "@/components/forms/form-feedback";
+import { SubmitButton } from "@/components/forms/submit-button";
 
 type Props = {
   requests: FamilyRequest[];
@@ -11,21 +19,24 @@ type Props = {
 
 export function MatchWorkbench({ requests, caregivers }: Props) {
   const [zip, setZip] = useState("");
-  const [status, setStatus] = useState<"all" | RequestStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | RequestStatus>("all");
   const [selectedRequestId, setSelectedRequestId] = useState<string>(requests[0]?.id ?? "");
   const [selectedCaregiverId, setSelectedCaregiverId] = useState<string>("");
   const [mode, setMode] = useState<"company" | "registry">("company");
-  const [note, setNote] = useState("");
-  const [message, setMessage] = useState("");
+  const [nextStatus, setNextStatus] = useState<RequestStatus>("reviewing");
+
+  const [matchState, matchAction] = useActionState(createMatchAction, initialActionState);
+  const [noteState, noteAction] = useActionState(saveAdminNoteAction, initialActionState);
+  const [statusState, statusAction] = useActionState(updateRequestStatusAction, initialActionState);
 
   const filteredRequests = useMemo(
     () =>
       requests.filter((r) => {
         const zipPass = zip ? r.zip_code.includes(zip) : true;
-        const statusPass = status === "all" ? true : r.status === status;
+        const statusPass = statusFilter === "all" ? true : r.status === statusFilter;
         return zipPass && statusPass;
       }),
-    [requests, status, zip]
+    [requests, statusFilter, zip]
   );
 
   const selectedRequest =
@@ -35,21 +46,13 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
     if (!selectedRequest) return [];
     return caregivers.filter((c) => {
       if (c.zip_code !== selectedRequest.zip_code) return false;
-      if (mode === "company") return c.approved_for_company_service;
-      return c.approved_for_registry;
+      if (c.application_status !== "approved") return false;
+      return mode === "company" ? c.approved_for_company_service : c.approved_for_registry;
     });
   }, [caregivers, mode, selectedRequest]);
 
-  const assign = () => {
-    if (!selectedRequest || !selectedCaregiverId) {
-      setMessage("Select a request and caregiver to create a match.");
-      return;
-    }
-    setMessage(`Draft match created: ${selectedRequest.id} → ${selectedCaregiverId} (${mode})`);
-  };
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <input
           value={zip}
@@ -58,8 +61,8 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
           className="field"
         />
         <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "all" | RequestStatus)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | RequestStatus)}
           className="field-select"
         >
           <option value="all">All statuses</option>
@@ -75,7 +78,7 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
           {filteredRequests.length ? (
             filteredRequests.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.id} · {r.contact_name}
+                {r.contact_name} · {r.zip_code}
               </option>
             ))
           ) : (
@@ -94,9 +97,12 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
 
       {selectedRequest ? (
         <div className="rounded-2xl border border-ink/5 bg-cream-100 p-4 text-sm text-ink-700">
-          <p className="font-semibold text-ink">Selected: {selectedRequest.id}</p>
-          <p className="mt-1">{selectedRequest.contact_name} · {selectedRequest.zip_code} · {selectedRequest.preferred_model}</p>
+          <p className="font-semibold text-ink">
+            {selectedRequest.contact_name} · {selectedRequest.zip_code} · {selectedRequest.preferred_model}
+          </p>
+          <p className="mt-1 text-xs text-ink-500">ID {selectedRequest.id}</p>
           <p className="mt-2">{selectedRequest.support_summary}</p>
+          <p className="mt-1 text-ink-500">Schedule: {selectedRequest.preferred_schedule}</p>
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-ink/15 p-4 text-sm text-ink-500">
@@ -104,8 +110,12 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      {/* Create match */}
+      <form action={matchAction} className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <input type="hidden" name="requestId" value={selectedRequest?.id ?? ""} />
+        <input type="hidden" name="mode" value={mode} />
         <select
+          name="caregiverId"
           value={selectedCaregiverId}
           onChange={(e) => setSelectedCaregiverId(e.target.value)}
           className="field-select"
@@ -117,40 +127,53 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
             </option>
           ))}
         </select>
-        <button
-          onClick={assign}
-          type="button"
-          className="inline-flex items-center justify-center rounded-full bg-hhh-700 px-5 py-3 text-sm font-semibold text-cream hover:bg-hhh-800"
-        >
-          Create match
-        </button>
-      </div>
+        <SubmitButton label="Create match" pendingLabel="Creating match…" />
+      </form>
 
-      {eligibleCaregivers.length === 0 ? (
-        <p className="text-sm text-sun-600">No eligible caregivers for this ZIP / mode yet.</p>
+      {eligibleCaregivers.length === 0 && selectedRequest ? (
+        <p className="text-sm text-sun-600">No approved caregivers for this ZIP and mode yet.</p>
       ) : null}
 
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Internal note"
-        className="field min-h-24 resize-y"
-      />
-      <button
-        type="button"
-        onClick={() =>
-          setMessage(
-            note ? `Internal note saved: ${note.slice(0, 60)}…` : "Please enter a note first."
-          )
-        }
-        className="inline-flex items-center rounded-full border border-hhh-700/30 px-4 py-2 text-sm font-semibold text-hhh-700 hover:bg-hhh-50"
-      >
-        Save internal note
-      </button>
+      <FormFeedback state={matchState} />
 
-      {message ? (
-        <p className="rounded-xl bg-hhh-50 px-4 py-3 text-sm text-hhh-800 ring-1 ring-hhh-200">{message}</p>
-      ) : null}
+      {/* Status update + family message */}
+      <form action={statusAction} className="grid gap-3 rounded-2xl border border-ink/5 bg-white p-4">
+        <input type="hidden" name="requestId" value={selectedRequest?.id ?? ""} />
+        <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+          <select
+            name="status"
+            value={nextStatus}
+            onChange={(e) => setNextStatus(e.target.value as RequestStatus)}
+            className="field-select"
+          >
+            {requestStatuses.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <input
+            name="familyMessage"
+            placeholder="Optional message visible to the family (sent by email)"
+            className="field"
+          />
+        </div>
+        <SubmitButton label="Update status" pendingLabel="Updating…" />
+      </form>
+      <FormFeedback state={statusState} />
+
+      {/* Internal note */}
+      <form action={noteAction} className="grid gap-3 rounded-2xl border border-ink/5 bg-white p-4">
+        <input type="hidden" name="relatedType" value="family_request" />
+        <input type="hidden" name="relatedId" value={selectedRequest?.id ?? ""} />
+        <textarea
+          name="note"
+          placeholder="Internal note (not visible to family)"
+          className="field min-h-24 resize-y"
+        />
+        <div>
+          <SubmitButton label="Save internal note" pendingLabel="Saving…" />
+        </div>
+      </form>
+      <FormFeedback state={noteState} />
     </div>
   );
 }

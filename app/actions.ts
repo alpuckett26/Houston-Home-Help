@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { ActionState } from "@/lib/types";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase/server";
+import { adminRecipients, emailLayout, sendEmail } from "@/lib/email";
+import { getSession } from "@/lib/auth";
 
 const familySchema = z.object({
   services: z.array(z.string()).min(1, "Select at least one service"),
@@ -59,9 +61,11 @@ export async function submitFamilyRequest(_prev: ActionState, formData: FormData
     return failureState("Please fix the highlighted form fields.", parsed.error.flatten().fieldErrors);
   }
 
-  const supabase = getSupabaseServerClient();
+  const session = await getSession();
+  const supabase = getSupabaseAdminClient() ?? (await getSupabaseServerClient());
   if (supabase) {
     const { error } = await supabase.from("family_requests").insert({
+      family_profile_id: session?.profile?.id ?? null,
       preferred_model: parsed.data.preferredModel,
       support_summary: `${parsed.data.supportSummary}\nServices: ${parsed.data.services.join(", ")}`,
       preferred_schedule: parsed.data.preferredSchedule,
@@ -77,6 +81,34 @@ export async function submitFamilyRequest(_prev: ActionState, formData: FormData
       return failureState("Unable to save your request right now. Please try again.");
     }
   }
+
+  const admins = adminRecipients();
+  if (admins.length) {
+    await sendEmail({
+      to: admins,
+      subject: `New family request · ${parsed.data.zipCode} · ${parsed.data.preferredModel}`,
+      replyTo: parsed.data.contactEmail,
+      html: emailLayout(
+        "New family request",
+        `<p><strong>${parsed.data.contactName}</strong> (${parsed.data.contactEmail} · ${parsed.data.contactPhone})</p>
+         <p>ZIP ${parsed.data.zipCode} · ${parsed.data.city} · prefers ${parsed.data.preferredModel}</p>
+         <p><strong>Schedule:</strong> ${parsed.data.preferredSchedule}</p>
+         <p><strong>Services:</strong> ${parsed.data.services.join(", ")}</p>
+         <p><strong>Summary:</strong><br/>${escapeHtml(parsed.data.supportSummary)}</p>`
+      )
+    });
+  }
+
+  await sendEmail({
+    to: parsed.data.contactEmail,
+    subject: "We received your Houston Home Help request",
+    html: emailLayout(
+      "Thanks — we received your request",
+      `<p>Hi ${parsed.data.contactName.split(" ")[0] || "there"},</p>
+       <p>Our coordination team is reviewing your request and will follow up, usually the same business day.</p>
+       <p>You can sign in any time to see visible updates at <a href="https://houstonhomehelp.com/family" style="color:#265a54; font-weight:600;">your family dashboard</a>.</p>`
+    )
+  });
 
   revalidatePath("/admin");
   return successState("Request received. We will contact you shortly.");
@@ -102,11 +134,13 @@ export async function submitCaregiverApplication(_prev: ActionState, formData: F
     return failureState("Please fix the highlighted form fields.", parsed.error.flatten().fieldErrors);
   }
 
-  const supabase = getSupabaseServerClient();
+  const session = await getSession();
+  const supabase = getSupabaseAdminClient() ?? (await getSupabaseServerClient());
   if (supabase) {
     const { data: caregiver, error } = await supabase
       .from("caregivers")
       .insert({
+        profile_id: session?.profile?.id ?? null,
         full_name: parsed.data.fullName,
         email: parsed.data.email,
         phone: parsed.data.phone,
@@ -132,8 +166,41 @@ export async function submitCaregiverApplication(_prev: ActionState, formData: F
         start_time: "08:00",
         end_time: "18:00"
       });
+      await supabase.from("caregiver_service_areas").insert({
+        caregiver_id: caregiver.id,
+        zip_code: parsed.data.zipCode
+      });
     }
   }
+
+  const admins = adminRecipients();
+  if (admins.length) {
+    await sendEmail({
+      to: admins,
+      subject: `New caregiver application · ${parsed.data.fullName} · ${parsed.data.zipCode}`,
+      replyTo: parsed.data.email,
+      html: emailLayout(
+        "New caregiver application",
+        `<p><strong>${parsed.data.fullName}</strong> (${parsed.data.email} · ${parsed.data.phone})</p>
+         <p>ZIP ${parsed.data.zipCode} · ${parsed.data.city} · Transportation: ${parsed.data.transportation}</p>
+         <p><strong>Services:</strong> ${parsed.data.services.join(", ")}</p>
+         <p><strong>Languages:</strong> ${parsed.data.languages}</p>
+         <p><strong>Availability:</strong> ${escapeHtml(parsed.data.availability)}</p>
+         <p><strong>Bio:</strong><br/>${escapeHtml(parsed.data.bio)}</p>
+         <p><strong>Experience:</strong><br/>${escapeHtml(parsed.data.experience)}</p>`
+      )
+    });
+  }
+
+  await sendEmail({
+    to: parsed.data.email,
+    subject: "Houston Home Help application received",
+    html: emailLayout(
+      "Application received",
+      `<p>Hi ${parsed.data.fullName.split(" ")[0] || "there"},</p>
+       <p>We received your application to support Houston families. Our admin team will review your profile and follow up with approval status or next steps.</p>`
+    )
+  });
 
   revalidatePath("/admin");
   return successState("Application received. Our team will review your profile.");
@@ -151,7 +218,7 @@ export async function submitContactForm(_prev: ActionState, formData: FormData):
     return failureState("Please provide complete contact details.", parsed.error.flatten().fieldErrors);
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseAdminClient() ?? (await getSupabaseServerClient());
   if (supabase) {
     const { error } = await supabase.from("contact_submissions").insert({
       name: parsed.data.name,
@@ -165,6 +232,20 @@ export async function submitContactForm(_prev: ActionState, formData: FormData):
     }
   }
 
+  const admins = adminRecipients();
+  if (admins.length) {
+    await sendEmail({
+      to: admins,
+      subject: `Contact form · ${parsed.data.name}`,
+      replyTo: parsed.data.email,
+      html: emailLayout(
+        "New contact message",
+        `<p><strong>${parsed.data.name}</strong> (${parsed.data.email} · ${parsed.data.phone})</p>
+         <p>${escapeHtml(parsed.data.message)}</p>`
+      )
+    });
+  }
+
   return successState("Message sent. We will follow up soon.");
 }
 
@@ -172,3 +253,13 @@ export const initialActionState: ActionState = {
   success: false,
   message: ""
 };
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/\n/g, "<br/>");
+}

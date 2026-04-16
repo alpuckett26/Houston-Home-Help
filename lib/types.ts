@@ -1,6 +1,15 @@
 export type PreferredModel = "company" | "registry";
 export type RequestStatus = "new" | "contacted" | "reviewing" | "matched" | "scheduled" | "completed" | "closed";
 export type ApplicationStatus = "pending" | "approved" | "rejected";
+export type UserRole = "admin" | "family" | "caregiver";
+
+export type Profile = {
+  id: string;
+  role: UserRole;
+  full_name: string;
+  email: string;
+  phone: string | null;
+};
 
 export type FamilyRequest = {
   id: string;
@@ -14,6 +23,32 @@ export type FamilyRequest = {
   contact_phone: string;
   status: RequestStatus;
   created_at?: string;
+  family_profile_id?: string | null;
+};
+
+export type RequestUpdate = {
+  id: string;
+  family_request_id: string;
+  visible_to_family: boolean;
+  message: string;
+  created_at: string;
+};
+
+export type AdminNote = {
+  id: string;
+  related_type: string;
+  related_id: string;
+  note: string;
+  created_at: string;
+};
+
+export type Match = {
+  id: string;
+  family_request_id: string;
+  caregiver_id: string;
+  match_type: "company" | "registry";
+  status: RequestStatus;
+  created_at: string;
 };
 
 export type Caregiver = {
