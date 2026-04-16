@@ -49,7 +49,9 @@ const footerCols = [
 function Logomark() {
   return (
     <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-hhh-700 text-cream shadow-soft">
-      <span className="font-display text-sm font-semibold tracking-tight">HHH</span>
+      <span className="font-display text-base font-semibold leading-none tracking-tight">
+        H<sup className="ml-0.5 text-[0.55em] font-semibold">3</sup>
+      </span>
     </span>
   );
 }
