@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, Container, Section } from "@/components/ui";
+import { Card, Container, Eyebrow, Pill, Section } from "@/components/ui";
 import { sampleCaregivers } from "@/lib/data";
 
 export default function CaregiverDashboardPage() {
@@ -8,27 +8,36 @@ export default function CaregiverDashboardPage() {
   return (
     <Section>
       <Container>
-        <h1 className="mb-6 text-3xl font-bold">Caregiver Dashboard</h1>
+        <Eyebrow>Caregiver portal</Eyebrow>
+        <h1 className="mt-2 font-display text-4xl font-semibold text-ink">Your profile</h1>
+
         {caregiver ? (
-          <Card>
-            <h2 className="text-xl font-semibold">Profile</h2>
-            <p className="mt-2">{caregiver.full_name} · {caregiver.city} {caregiver.zip_code}</p>
-            <p className="text-slate-700">Application status: <span className="rounded-full bg-slate-100 px-2 py-1 text-xs uppercase">{caregiver.application_status}</span></p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border p-3">
-                <p className="font-semibold">Availability</p>
-                <p className="text-sm text-slate-700">Weekdays and weekends by request.</p>
+          <Card className="mt-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-display text-xl font-semibold text-ink">{caregiver.full_name}</p>
+                <p className="mt-1 text-sm text-ink-500">{caregiver.city} · ZIP {caregiver.zip_code}</p>
               </div>
-              <div className="rounded-xl border p-3">
-                <p className="font-semibold">Introductions / assignments</p>
-                <p className="text-sm text-slate-700">No active introductions yet.</p>
+              <Pill>{caregiver.application_status}</Pill>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-cream-100 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Availability</p>
+                <p className="mt-1 text-sm text-ink-700">Weekdays and weekends by request.</p>
+              </div>
+              <div className="rounded-2xl bg-cream-100 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Introductions / assignments</p>
+                <p className="mt-1 text-sm text-ink-700">No active introductions yet.</p>
               </div>
             </div>
           </Card>
         ) : (
-          <Card>
-            <p className="text-slate-700">No caregiver profile found.</p>
-            <Link href="/apply-caregiver" className="mt-3 inline-block text-brand-700">Submit caregiver application</Link>
+          <Card className="mt-8 text-center">
+            <p className="text-ink-700">No caregiver profile found.</p>
+            <Link href="/apply-caregiver" className="mt-3 inline-block font-semibold text-hhh-700">
+              Submit caregiver application
+            </Link>
           </Card>
         )}
       </Container>

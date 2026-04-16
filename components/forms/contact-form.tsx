@@ -5,17 +5,23 @@ import { initialActionState, submitContactForm } from "@/app/actions";
 import { FormFeedback } from "@/components/forms/form-feedback";
 import { SubmitButton } from "@/components/forms/submit-button";
 
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="text-sm font-semibold text-ink-700">{children}</span>;
+}
+
 export function ContactForm() {
   const [state, action] = useActionState(submitContactForm, initialActionState);
 
   return (
-    <form action={action} className="mt-6 grid gap-3">
-      <input required name="name" placeholder="Name" className="rounded-lg border p-2" />
-      <input required type="email" name="email" placeholder="Email" className="rounded-lg border p-2" />
-      <input required name="phone" placeholder="Phone" className="rounded-lg border p-2" />
-      <textarea required name="message" placeholder="How can we help?" className="min-h-24 rounded-lg border p-2" />
+    <form action={action} className="mt-8 grid gap-5">
+      <label className="grid gap-2"><FieldLabel>Name</FieldLabel><input required name="name" className="field" /></label>
+      <label className="grid gap-2"><FieldLabel>Email</FieldLabel><input required type="email" name="email" className="field" /></label>
+      <label className="grid gap-2"><FieldLabel>Phone</FieldLabel><input required name="phone" className="field" /></label>
+      <label className="grid gap-2"><FieldLabel>How can we help?</FieldLabel>
+        <textarea required name="message" className="field min-h-32 resize-y" />
+      </label>
       <FormFeedback state={state} />
-      <SubmitButton label="Send Message" pendingLabel="Sending..." />
+      <SubmitButton label="Send message" pendingLabel="Sending…" />
     </form>
   );
 }

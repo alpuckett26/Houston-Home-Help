@@ -5,9 +5,11 @@ export function FormFeedback({ state }: { state: ActionState }) {
     return null;
   }
 
+  const styles = state.success
+    ? "bg-hhh-50 text-hhh-800 ring-hhh-200"
+    : "bg-sun-50 text-sun-600 ring-sun-200";
+
   return (
-    <p className={`rounded-lg p-3 text-sm ${state.success ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-      {state.message}
-    </p>
+    <p className={`rounded-xl px-4 py-3 text-sm ring-1 ${styles}`}>{state.message}</p>
   );
 }

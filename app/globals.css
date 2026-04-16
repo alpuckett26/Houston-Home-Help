@@ -4,8 +4,41 @@
 
 :root {
   color-scheme: light;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-display: ui-serif, Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900;
+  @apply bg-cream text-ink antialiased;
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-ink shadow-sm outline-none transition placeholder:text-ink/40 focus:border-hhh-500 focus:ring-4 focus:ring-hhh-500/15;
+  }
+
+  .field-select {
+    @apply field appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23265A54' stroke-width='2' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6'/></svg>");
+    background-size: 14px 14px;
+    background-position: right 1rem center;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-hhh-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-hhh-700;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-hhh-600;
+  }
 }

@@ -28,11 +28,11 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
     [requests, status, zip]
   );
 
-  const selectedRequest = filteredRequests.find((r) => r.id === selectedRequestId) ?? filteredRequests[0] ?? null;
+  const selectedRequest =
+    filteredRequests.find((r) => r.id === selectedRequestId) ?? filteredRequests[0] ?? null;
 
   const eligibleCaregivers = useMemo(() => {
     if (!selectedRequest) return [];
-
     return caregivers.filter((c) => {
       if (c.zip_code !== selectedRequest.zip_code) return false;
       if (mode === "company") return c.approved_for_company_service;
@@ -45,53 +45,112 @@ export function MatchWorkbench({ requests, caregivers }: Props) {
       setMessage("Select a request and caregiver to create a match.");
       return;
     }
-
-    setMessage(`Draft match created: ${selectedRequest.id} -> ${selectedCaregiverId} (${mode})`);
+    setMessage(`Draft match created: ${selectedRequest.id} → ${selectedCaregiverId} (${mode})`);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-4">
-        <input value={zip} onChange={(e) => setZip(e.target.value)} placeholder="Filter ZIP" className="rounded border p-2" />
-        <select value={status} onChange={(e) => setStatus(e.target.value as "all" | RequestStatus)} className="rounded border p-2">
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <input
+          value={zip}
+          onChange={(e) => setZip(e.target.value)}
+          placeholder="Filter ZIP"
+          className="field"
+        />
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as "all" | RequestStatus)}
+          className="field-select"
+        >
           <option value="all">All statuses</option>
-          {requestStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          {requestStatuses.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
         </select>
-        <select value={selectedRequestId} onChange={(e) => setSelectedRequestId(e.target.value)} className="rounded border p-2">
-          {filteredRequests.length ? filteredRequests.map((r) => <option key={r.id} value={r.id}>{r.id} · {r.contact_name}</option>) : <option>No requests found</option>}
+        <select
+          value={selectedRequestId}
+          onChange={(e) => setSelectedRequestId(e.target.value)}
+          className="field-select"
+        >
+          {filteredRequests.length ? (
+            filteredRequests.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.id} · {r.contact_name}
+              </option>
+            ))
+          ) : (
+            <option>No requests found</option>
+          )}
         </select>
-        <select value={mode} onChange={(e) => setMode(e.target.value as "company" | "registry")} className="rounded border p-2">
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as "company" | "registry")}
+          className="field-select"
+        >
           <option value="company">Company assignment</option>
           <option value="registry">Registry introduction</option>
         </select>
       </div>
 
       {selectedRequest ? (
-        <div className="rounded-xl border p-3 text-sm text-slate-700">
-          <p className="font-semibold">Selected request: {selectedRequest.id}</p>
-          <p>{selectedRequest.contact_name} · {selectedRequest.zip_code} · {selectedRequest.preferred_model}</p>
-          <p className="mt-1">{selectedRequest.support_summary}</p>
+        <div className="rounded-2xl border border-ink/5 bg-cream-100 p-4 text-sm text-ink-700">
+          <p className="font-semibold text-ink">Selected: {selectedRequest.id}</p>
+          <p className="mt-1">{selectedRequest.contact_name} · {selectedRequest.zip_code} · {selectedRequest.preferred_model}</p>
+          <p className="mt-2">{selectedRequest.support_summary}</p>
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">No requests match current filters.</p>
+        <p className="rounded-2xl border border-dashed border-ink/15 p-4 text-sm text-ink-500">
+          No requests match current filters.
+        </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <select value={selectedCaregiverId} onChange={(e) => setSelectedCaregiverId(e.target.value)} className="rounded border p-2">
+        <select
+          value={selectedCaregiverId}
+          onChange={(e) => setSelectedCaregiverId(e.target.value)}
+          className="field-select"
+        >
           <option value="">Select caregiver</option>
           {eligibleCaregivers.map((c) => (
-            <option key={c.id} value={c.id}>{c.full_name} · {c.zip_code}</option>
+            <option key={c.id} value={c.id}>
+              {c.full_name} · {c.zip_code}
+            </option>
           ))}
         </select>
-        <button onClick={assign} type="button" className="rounded bg-brand-500 px-4 py-2 text-sm font-semibold text-white">Create Match</button>
+        <button
+          onClick={assign}
+          type="button"
+          className="inline-flex items-center justify-center rounded-full bg-hhh-700 px-5 py-3 text-sm font-semibold text-cream hover:bg-hhh-800"
+        >
+          Create match
+        </button>
       </div>
 
-      {eligibleCaregivers.length === 0 ? <p className="text-sm text-amber-700">No eligible caregivers for this ZIP/mode yet.</p> : null}
+      {eligibleCaregivers.length === 0 ? (
+        <p className="text-sm text-sun-600">No eligible caregivers for this ZIP / mode yet.</p>
+      ) : null}
 
-      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal note" className="min-h-20 w-full rounded border p-2" />
-      <button type="button" onClick={() => setMessage(note ? `Internal note saved: ${note.slice(0, 40)}...` : "Please enter a note first.")} className="rounded border border-brand-500 px-4 py-2 text-sm text-brand-700">Save Internal Note</button>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Internal note"
+        className="field min-h-24 resize-y"
+      />
+      <button
+        type="button"
+        onClick={() =>
+          setMessage(
+            note ? `Internal note saved: ${note.slice(0, 60)}…` : "Please enter a note first."
+          )
+        }
+        className="inline-flex items-center rounded-full border border-hhh-700/30 px-4 py-2 text-sm font-semibold text-hhh-700 hover:bg-hhh-50"
+      >
+        Save internal note
+      </button>
 
-      {message ? <p className="rounded bg-slate-100 p-3 text-sm text-slate-700">{message}</p> : null}
+      {message ? (
+        <p className="rounded-xl bg-hhh-50 px-4 py-3 text-sm text-hhh-800 ring-1 ring-hhh-200">{message}</p>
+      ) : null}
     </div>
   );
 }

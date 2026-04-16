@@ -1,75 +1,93 @@
 import { MatchWorkbench } from "@/components/admin/match-workbench";
-import { Card, Container, Section } from "@/components/ui";
+import { Card, Container, Eyebrow, Pill, Section } from "@/components/ui";
 import { sampleCaregivers, sampleRequests } from "@/lib/data";
 
-function Stat({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, sub }: { label: string; value: number; sub: string }) {
   return (
     <Card>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{label}</p>
+      <p className="mt-2 font-display text-3xl font-semibold text-ink">{value}</p>
+      <p className="mt-1 text-xs text-ink-500">{sub}</p>
     </Card>
   );
 }
 
 export default function AdminPage() {
   const newRequests = sampleRequests.filter((r) => r.status === "new").length;
-  const activeRequests = sampleRequests.filter((r) => ["new", "contacted", "reviewing", "matched", "scheduled"].includes(r.status)).length;
+  const activeRequests = sampleRequests.filter((r) =>
+    ["new", "contacted", "reviewing", "matched", "scheduled"].includes(r.status)
+  ).length;
   const approvedCaregivers = sampleCaregivers.filter((c) => c.application_status === "approved").length;
   const pendingApps = sampleCaregivers.filter((c) => c.application_status === "pending").length;
 
   return (
     <Section>
       <Container>
-        <h1 className="mb-6 text-3xl font-bold">Admin Dashboard</h1>
+        <Eyebrow>Admin portal</Eyebrow>
+        <h1 className="mt-2 font-display text-4xl font-semibold text-ink">Coordination dashboard</h1>
+        <p className="mt-2 text-ink-500">Triage new requests, review applications, and manage manual matches.</p>
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="New requests" value={newRequests} />
-          <Stat label="Active requests" value={activeRequests} />
-          <Stat label="Approved caregivers" value={approvedCaregivers} />
-          <Stat label="Pending caregiver apps" value={pendingApps} />
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="New requests" value={newRequests} sub="Awaiting first review" />
+          <StatCard label="Active requests" value={activeRequests} sub="Through scheduled" />
+          <StatCard label="Approved caregivers" value={approvedCaregivers} sub="On roster or registry" />
+          <StatCard label="Pending apps" value={pendingApps} sub="Waiting on admin review" />
         </div>
 
-        <Card>
-          <h2 className="mb-3 text-xl font-semibold">Manual Match Workflow</h2>
-          <MatchWorkbench requests={sampleRequests} caregivers={sampleCaregivers} />
+        <Card className="mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-display text-xl font-semibold text-ink">Manual match workflow</p>
+              <p className="mt-1 text-sm text-ink-500">Filter by ZIP and mode, then draft a match or save an internal note.</p>
+            </div>
+          </div>
+          <div className="mt-6">
+            <MatchWorkbench requests={sampleRequests} caregivers={sampleCaregivers} />
+          </div>
         </Card>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card>
-            <h2 className="mb-3 text-xl font-semibold">Recent family requests</h2>
+            <p className="font-display text-xl font-semibold text-ink">Recent family requests</p>
             {sampleRequests.length ? (
-              <div className="space-y-3">
+              <div className="mt-4 space-y-3">
                 {sampleRequests.map((r) => (
-                  <div key={r.id} className="rounded-xl border p-3">
+                  <div key={r.id} className="rounded-2xl border border-ink/5 bg-cream-100 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold">{r.contact_name} · {r.zip_code}</p>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs uppercase">{r.status}</span>
+                      <p className="font-semibold text-ink">{r.contact_name} <span className="text-ink-500">· {r.zip_code}</span></p>
+                      <Pill>{r.status}</Pill>
                     </div>
-                    <p className="text-sm text-slate-600">{r.support_summary}</p>
+                    <p className="mt-2 text-sm text-ink-700">{r.support_summary}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">No family requests yet.</p>
+              <p className="mt-4 rounded-2xl border border-dashed border-ink/15 p-4 text-sm text-ink-500">
+                No family requests yet.
+              </p>
             )}
           </Card>
 
           <Card>
-            <h2 className="mb-3 text-xl font-semibold">Caregiver applications</h2>
+            <p className="font-display text-xl font-semibold text-ink">Caregiver applications</p>
             {sampleCaregivers.length ? (
-              <div className="space-y-3">
+              <div className="mt-4 space-y-3">
                 {sampleCaregivers.map((c) => (
-                  <div key={c.id} className="rounded-xl border p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold">{c.full_name} · {c.zip_code}</p>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs uppercase">{c.application_status}</span>
+                  <div key={c.id} className="rounded-2xl border border-ink/5 bg-cream-100 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-ink">{c.full_name} <span className="text-ink-500">· {c.zip_code}</span></p>
+                      <Pill>{c.application_status}</Pill>
                     </div>
-                    <p className="text-sm text-slate-600">Company: {c.approved_for_company_service ? "Yes" : "No"} · Registry: {c.approved_for_registry ? "Yes" : "No"}</p>
+                    <p className="mt-2 text-sm text-ink-700">
+                      Company: {c.approved_for_company_service ? "Yes" : "No"} · Registry: {c.approved_for_registry ? "Yes" : "No"}
+                    </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">No caregiver applications yet.</p>
+              <p className="mt-4 rounded-2xl border border-dashed border-ink/15 p-4 text-sm text-ink-500">
+                No caregiver applications yet.
+              </p>
             )}
           </Card>
         </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Card, Container, Section } from "@/components/ui";
+import { Card, Container, Eyebrow, Section } from "@/components/ui";
+import { ArrowRightIcon } from "@/components/icons";
 
 const roles = [
   { label: "Admin", href: "/admin", desc: "Review requests, applications, matches, notes, and status updates." },
@@ -11,13 +12,20 @@ export default function PortalPage() {
   return (
     <Section>
       <Container>
-        <h1 className="mb-6 text-3xl font-bold">Role Portals</h1>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="mx-auto max-w-2xl text-center">
+          <Eyebrow>Role portals</Eyebrow>
+          <h1 className="mt-3 font-display text-4xl font-semibold text-ink">Sign in to your space.</h1>
+          <p className="mt-3 text-ink-500">Choose the portal that fits your role with HHH.</p>
+        </div>
+
+        <div className="mt-12 grid gap-5 sm:grid-cols-3">
           {roles.map((role) => (
-            <Card key={role.label}>
-              <h2 className="text-lg font-semibold">{role.label} Portal</h2>
-              <p className="mt-2 text-sm text-slate-600">{role.desc}</p>
-              <Link href={role.href} className="mt-4 inline-block font-semibold text-brand-700">Open {role.label}</Link>
+            <Card key={role.label} interactive>
+              <p className="font-display text-xl font-semibold text-ink">{role.label}</p>
+              <p className="mt-2 text-sm text-ink-500">{role.desc}</p>
+              <Link href={role.href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-hhh-700 hover:text-hhh-800">
+                Open {role.label} <ArrowRightIcon className="h-4 w-4" />
+              </Link>
             </Card>
           ))}
         </div>
